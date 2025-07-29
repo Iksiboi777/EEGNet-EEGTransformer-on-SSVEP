@@ -1,0 +1,5 @@
+tensorflow==2.11.0
+mne==1.2.0
+PyRiemann==0.4
+scikit-learn==1.2.2
+matplotlib==3.7.0
