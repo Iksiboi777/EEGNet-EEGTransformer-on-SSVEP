@@ -19,6 +19,7 @@ MAX_TRIAL_SECS: float = 4.0
 CHANS: int = 64
 CLASSES: int = 40
 SAMPLES: int = int(MAX_TRIAL_SECS * SAMPLING_RATE)
+NUM_SUBJECTS: int = 70
 
 # --- EEGNet_SSVEP Model Parameters ---
 KERN_LENGTH: int = 250
@@ -35,6 +36,10 @@ SUBJECT_ID_FOR_WEIGHTS: int = 3
 
 # Path to your data, needed to load a sample for demonstration
 DATA_PATH: str = '../Data'
+
+# Path for the output file
+OUTPUT_DIR: str = 'features'
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 ###############################################################################
 # # 2. FEATURE EXTRACTOR CREATION FUNCTION
@@ -81,7 +86,8 @@ def create_eegnet_feature_extractor(weights_path: str) -> Tuple[Model, str]:
     # will be the output of our chosen intermediate layer.
     feature_extractor_model: Model = Model(
         inputs=full_model.input,
-        outputs=full_model.get_layer(feature_layer_name).output
+        outputs=full_model.get_layer(feature_layer_name).output,
+        name='eegnet_feature_extractor'
     )
     
     print(f"Feature extractor created. Output will be from layer: '{feature_layer_name}'")
@@ -107,7 +113,7 @@ if __name__ == "__main__":
         # --- Load a sample of data to test the extractor ---
         print("\n--- Running a test with sample data from Subject 1 ---")
         # We can reuse the data loading function from the training script
-        from test_cross_subject import load_all_beta_data 
+        from import_safe_tcs import load_all_beta_data 
         
         # Load data for a single subject for this example
         X_all, _, _ = load_all_beta_data(data_path=DATA_PATH)
@@ -124,14 +130,13 @@ if __name__ == "__main__":
         # A Transformer expects input in the format: (batch, sequence_length, feature_dimension)
         # The current output is (batch, filters, 1, time_points). We need to reshape it.
         
-        # 1. Squeeze the singleton dimension
-        squeezed_features = np.squeeze(extracted_features, axis=2)
-        print(f"Shape after squeezing: {squeezed_features.shape}")
-        
-        # 2. Permute the last two dimensions to get (batch, time_points, filters)
-        transformer_input = np.transpose(squeezed_features, (0, 2, 1))
+        # CORRECTED RESHAPING LOGIC:
+        # 1. Squeeze the singleton dimension at axis=1.
+        # This removes the useless dimension and leaves (batch, time_points, filters).
+        transformer_input = np.squeeze(extracted_features, axis=1)
+
         print(f"Final shape ready for Transformer input: {transformer_input.shape}")
-        
+
         print("\n--- Demonstration Complete ---")
         print("You can now use this 'feature_extractor' model as the first stage of your MTGNet,")
         print("passing its reshaped output to your Transformer block.")
