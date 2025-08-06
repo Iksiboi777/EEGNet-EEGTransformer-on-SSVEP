@@ -151,7 +151,7 @@ def load_subject_data(subject_id, data_path=DATA_PATH):
 all_subject_accuracies = []
 
 # Create a directory to store the saved models if it doesn't exist
-os.makedirs('models', exist_ok=True)
+os.makedirs('../models', exist_ok=True)
 
 print("############################################################")
 print("Starting EEGNet_SSVEP Training and Evaluation on BETA Dataset")
@@ -192,7 +192,7 @@ for subject_id in range(1, NUM_SUBJECTS + 1):
         # Compile the model
         model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
-        checkpoint_path = f'models/EEGNet_SSVEP_Subject{subject_id}_Fold{fold_num + 1}.h5'
+        checkpoint_path = f'../models/EEGNet_SSVEP_Subject{subject_id}_Fold{fold_num + 1}.h5'
         # Define a checkpoint to save the best model during training
         checkpoint = ModelCheckpoint(
             filepath=checkpoint_path,

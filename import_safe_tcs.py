@@ -40,7 +40,7 @@ def setup_gpu():
 ###############################################################################
 # # 2. SETUP PARAMETERS
 ###############################################################################
-DATA_PATH = 'Data' 
+DATA_PATH = '../Data' 
 NUM_SUBJECTS = 70
 SAMPLING_RATE = 250
 MAX_TRIAL_SECS = 4.0
@@ -118,7 +118,7 @@ if __name__ == "__main__":
     logo = LeaveOneGroupOut()
 
     all_subject_accuracies: List[float] = []
-    os.makedirs('models_cross_subject', exist_ok=True)
+    os.makedirs('../models_cross_subject', exist_ok=True)
 
     print("\n############################################################")
     print("Starting EEGNet_SSVEP CROSS-SUBJECT Training and Evaluation")
@@ -142,7 +142,7 @@ if __name__ == "__main__":
 
         model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
-        checkpoint_path: str = f'models_cross_subject/EEGNet_SSVEP_Test_S{test_subject_id}.h5'
+        checkpoint_path: str = f'../models_cross_subject/EEGNet_SSVEP_Test_S{test_subject_id}.h5'
         
         checkpoint: ModelCheckpoint = ModelCheckpoint(
             filepath=checkpoint_path, monitor='val_accuracy', verbose=1,

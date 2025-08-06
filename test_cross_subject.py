@@ -168,7 +168,7 @@ for fold_num, (train_idx, test_idx) in enumerate(logo.split(X_all, y_all_categor
 
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
-    checkpoint_path: str = f'models_cross_subject/EEGNet_SSVEP_Test_S{test_subject_id}.h5'
+    checkpoint_path: str = f'../models_cross_subject/EEGNet_SSVEP_Test_S{test_subject_id}.h5'
     
     checkpoint: ModelCheckpoint = ModelCheckpoint(
         filepath=checkpoint_path, monitor='val_accuracy', verbose=1,

@@ -62,7 +62,7 @@ def load_subject_data(subject_id: int, data_path: str = DATA_PATH) -> np.ndarray
 ###############################################################################
 
 all_subject_accuracies: List[float] = []
-models_dir: str = 'models_cross_subject'
+models_dir: str = '../models_cross_subject'
 
 # print("\n############################################################")
 # print("      Re-evaluating Saved Models from Cross-Subject Run     ")
