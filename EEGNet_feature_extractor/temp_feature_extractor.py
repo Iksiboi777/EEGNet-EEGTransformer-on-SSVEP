@@ -29,17 +29,17 @@ F2: int = 96
 
 # --- Configuration for this script ---
 # Path to the directory where your best models were saved
-MODELS_DIR: str = '../models_cross_subject'
+MODELS_DIR: str = '../../models_cross_subject'
 # The ID of the subject whose model you want to use as the base for the extractor.
 # A subject with high accuracy (like S3, S18, or S37) is a good choice.
 # This model, trained on 69 other subjects, will serve as our single, generalized feature extractor.
-SUBJECT_ID_FOR_WEIGHTS: int = 3 
+# SUBJECT_ID_FOR_WEIGHTS: int = 3 
 
 # Path to your raw data directory
-DATA_PATH: str = '../Data'
+DATA_PATH: str = '../../Data'
 
 # Path for the output file
-OUTPUT_DIR: str = '../features'
+OUTPUT_DIR: str = '../../features'
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 ###############################################################################

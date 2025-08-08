@@ -193,24 +193,27 @@ def EEGNet_SSVEP(nb_classes = 12, Chans = 8, Samples = 256,
     input1   = Input(shape = (Chans, Samples, 1))
 
     ##################################################################
+    # Block 1
     block1       = Conv2D(F1, (1, kernLength), padding = 'same',
                                    input_shape = (Chans, Samples, 1),
-                                   use_bias = False)(input1)
-    block1       = BatchNormalization()(block1)
+                                   use_bias = False, name='conv_1')(input1)
+    block1       = BatchNormalization(name='batch_norm_1')(block1)
     block1       = DepthwiseConv2D((Chans, 1), use_bias = False, 
                                    depth_multiplier = D,
-                                   depthwise_constraint = max_norm(1.))(block1)
-    block1       = BatchNormalization()(block1)
-    block1       = Activation('elu')(block1)
-    block1       = AveragePooling2D((1, 4))(block1)
-    block1       = dropoutType(dropoutRate)(block1)
+                                   depthwise_constraint = max_norm(1.), name='depthwise_conv_1')(block1)
+    block1       = BatchNormalization(name='batch_norm_2')(block1)
+    block1       = Activation('elu', name='activation_1')(block1)
+    block1       = AveragePooling2D((1, 4), name='avg_pool_1')(block1)
+    # This is the target layer for temporal feature extraction
+    block1       = dropoutType(dropoutRate, name='temporal_feature_dropout')(block1)
     
+    # Block 2
     block2       = SeparableConv2D(F2, (1, 16),
-                                   use_bias = False, padding = 'same')(block1)
-    block2       = BatchNormalization()(block2)
-    block2       = Activation('elu')(block2)
-    block2       = AveragePooling2D((1, 8))(block2)
-    block2       = dropoutType(dropoutRate)(block2)
+                                   use_bias = False, padding = 'same', name='separable_conv_1')(block1)
+    block2       = BatchNormalization(name='batch_norm_3')(block2)
+    block2       = Activation('elu', name='activation_2')(block2)
+    block2       = AveragePooling2D((1, 8), name='avg_pool_2')(block2)
+    block2       = dropoutType(dropoutRate, name='spatial_feature_dropout')(block2)
         
     flatten      = Flatten(name = 'flatten')(block2)
     
