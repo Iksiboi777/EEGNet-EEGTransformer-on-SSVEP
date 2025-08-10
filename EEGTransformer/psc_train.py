@@ -14,17 +14,21 @@ from EEGTransformer_Class import EEGTransformer
 # --- Data Parameters ---
 CLASSES = 40
 NUM_SUBJECTS = 70
+TRIALS_PER_SUBJECT = 160 # 4 blocks * 40 conditions
 
 # --- Transformer Model Hyperparameters ---
+# Using the larger, more powerful configuration you found to be effective.
 NUM_HEADS = 8
-KEY_DIM = 12  # Total attention dim = 8 * 12 = 96, matching feature dim
-FFN_INTERMEDIATE_DIM = 1024
+KEY_DIM = 512 
+FFN_INTERMEDIATE_DIM = 2048
 DROPOUT_RATE = 0.25
 
 # --- Training Parameters ---
-EPOCHS = 100 
+EPOCHS = 150 
 BATCH_SIZE = 64
-LEARNING_RATE = 0.001
+# The PEAK learning rate for the scheduler.
+PEAK_LEARNING_RATE = 0.0005
+WARMUP_EPOCHS = 15
 
 # --- File Paths ---
 FEATURES_PATH = '../../features/BETA_EEGNet_Ensemble_Features.npz'
@@ -42,15 +46,36 @@ try:
     labels = data['labels']
     subject_indices = data['subject_indices']
     print("Features, labels, and subject indices loaded successfully.")
-    print(f"Features shape: {features.shape}")
-    print(f"Labels shape: {labels.shape}")
-    print(f"Subject indices shape: {subject_indices.shape}")
 except FileNotFoundError:
     print(f"ERROR: Feature file not found at {FEATURES_PATH}.")
     exit()
 
 ###############################################################################
-# # 3. CROSS-VALIDATION TRAINING LOOP
+# # 3. LEARNING RATE SCHEDULER WITH WARM-UP
+###############################################################################
+
+def lr_warmup_cosine_decay(global_step, warmup_steps, total_steps, peak_lr):
+    """
+    A learning rate scheduler that implements a linear warm-up followed by
+    a cosine decay.
+    """
+    global_step = tf.cast(global_step, dtype=tf.float32)
+    warmup_steps = tf.cast(warmup_steps, dtype=tf.float32)
+    total_steps = tf.cast(total_steps, dtype=tf.float32)
+    
+    if global_step < warmup_steps:
+        # Linear warm-up
+        lr = peak_lr * (global_step / warmup_steps)
+    else:
+        # Cosine decay
+        progress = (global_step - warmup_steps) / (total_steps - warmup_steps)
+        cosine_decay = 0.5 * (1.0 + tf.cos(np.pi * progress))
+        lr = peak_lr * cosine_decay
+        
+    return tf.keras.backend.get_value(lr)
+
+###############################################################################
+# # 4. CROSS-VALIDATION TRAINING LOOP
 ###############################################################################
 
 logo = LeaveOneGroupOut()
@@ -60,15 +85,26 @@ print("\n############################################################")
 print("   Starting EEGTransformer Cross-Subject Training   ")
 print("############################################################\n")
 
-for fold_num, (train_idx, test_idx) in enumerate(logo.split(features, labels, subject_indices)):
+for fold_num, (train_val_idx, test_idx) in enumerate(logo.split(features, labels, subject_indices)):
     test_subject_id = fold_num + 1
     print(f"--- Fold {test_subject_id}/{NUM_SUBJECTS}: Testing on Subject {test_subject_id} ---")
     
-    X_train, X_test = features[train_idx], features[test_idx]
-    y_train, y_test = labels[train_idx], labels[test_idx]
+    # --- 1. Create the final Test Set ---
+    X_test, y_test = features[test_idx], labels[test_idx]
+    
+    # --- 2. Create a robust Train/Validation Split (68 subjects / 1 subject) ---
+    # Take the last subject in the training group to be the validation subject.
+    val_idx = train_val_idx[-TRIALS_PER_SUBJECT:]
+    train_idx = train_val_idx[:-TRIALS_PER_SUBJECT]
+    
+    X_train, y_train = features[train_idx], labels[train_idx]
+    X_val, y_val = features[val_idx], labels[val_idx]
 
-    print(f"Training on {len(X_train)} samples, validating on {len(X_test)} samples...")
+    print(f"Training on {len(X_train)} samples ({NUM_SUBJECTS-2} subjects)...")
+    print(f"Validating on {len(X_val)} samples (1 subject)...")
+    print(f"Testing on {len(X_test)} samples (1 subject)...")
 
+    # --- 3. Model Creation and Compilation ---
     model = EEGTransformer(
         output_dim=CLASSES,
         num_heads=NUM_HEADS,
@@ -77,7 +113,7 @@ for fold_num, (train_idx, test_idx) in enumerate(logo.split(features, labels, su
         dropout_rate=DROPOUT_RATE
     )
 
-    optimizer = keras.optimizers.Adam(learning_rate=LEARNING_RATE)
+    optimizer = keras.optimizers.Adam(clipnorm=1.0) # LR will be handled by the scheduler
     
     model.compile(
         optimizer=optimizer,
@@ -85,6 +121,19 @@ for fold_num, (train_idx, test_idx) in enumerate(logo.split(features, labels, su
         metrics=['accuracy']
     )
 
+    # --- 4. Setup Callbacks with the LR Scheduler ---
+    total_steps = (len(X_train) // BATCH_SIZE) * EPOCHS
+    warmup_steps = (len(X_train) // BATCH_SIZE) * WARMUP_EPOCHS
+
+    lr_scheduler_callback = keras.callbacks.LearningRateScheduler(
+        lambda epoch: lr_warmup_cosine_decay(
+            global_step=epoch * (len(X_train) // BATCH_SIZE),
+            warmup_steps=warmup_steps,
+            total_steps=total_steps,
+            peak_lr=PEAK_LEARNING_RATE
+        )
+    )
+    
     model_checkpoint = keras.callbacks.ModelCheckpoint(
         filepath=os.path.join(MODELS_OUTPUT_DIR, f'EEGTransformer_Test_S{test_subject_id}.h5'),
         monitor='val_accuracy',
@@ -94,26 +143,21 @@ for fold_num, (train_idx, test_idx) in enumerate(logo.split(features, labels, su
     
     early_stopping = keras.callbacks.EarlyStopping(
         monitor='val_accuracy',
-        patience=30, # Increased patience for potentially slower learning
+        patience=35, # Give it more patience with the new scheduler
         restore_best_weights=True
     )
 
-    reduce_lr = keras.callbacks.ReduceLROnPlateau(
-        monitor='val_accuracy',
-        factor=0.5,
-        patience=15,
-        min_lr=0.00001
-    )
-
+    # --- 5. Model Training ---
     history = model.fit(
         X_train, y_train,
         batch_size=BATCH_SIZE,
         epochs=EPOCHS,
-        validation_data=(X_test, y_test),
-        callbacks=[model_checkpoint, early_stopping, reduce_lr],
+        validation_data=(X_val, y_val),
+        callbacks=[model_checkpoint, early_stopping, lr_scheduler_callback],
         verbose=2
     )
 
+    # --- 6. Final Evaluation ---
     print(f"Evaluating final model on test subject {test_subject_id}...")
     loss, accuracy = model.evaluate(X_test, y_test, verbose=0)
     all_accuracies.append(accuracy)
