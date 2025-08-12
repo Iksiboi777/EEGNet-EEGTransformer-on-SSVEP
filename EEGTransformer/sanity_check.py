@@ -20,8 +20,8 @@ TRIALS_PER_SUBJECT = 160 # 4 blocks * 40 conditions
 # CORRECTED: Using a much simpler model to see if it can learn at all.
 # A large, complex model can be more prone to training instability.
 NUM_HEADS = 8
-KEY_DIM = 512  # Total attention dim = 8 * 12 = 96, matching feature dim
-FFN_INTERMEDIATE_DIM = 2048
+KEY_DIM = 12  # Total attention dim = 8 * 12 = 96, matching feature dim
+FFN_INTERMEDIATE_DIM = 384
 DROPOUT_RATE = 0.25
 
 # --- Training Parameters ---
@@ -32,7 +32,7 @@ LEARNING_RATE = 0.0005
 WARMUP_EPOCHS = 10  # Warmup steps for learning rate scheduler
 
 # --- File Paths ---
-FEATURES_PATH = '../../features/BETA_EEGNet_Ensemble_Features.npz'
+FEATURES_PATH = '../../features/BETA_AllSubjects_EEGNetFeatures.npz'
 
 ###############################################################################
 # # 2. DATA LOADING
