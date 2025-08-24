@@ -1,6 +1,6 @@
 # EEGNet + EEGTransformer for SSVEP Classification (Archived Baseline)
 
-> **Note:** This repository contains the code for an earlier implementation of an SSVEP classification system and is **archived**. This project is no longer under active development. It served as the initial baseline that informed the development of the more advanced, PyTorch-based **[SSVEPformer project](https://github.com/Your-GitHub-Username/Your-Main-SSVEPformer-Repo-Name)**.
+> **Note:** This repository contains the code for an earlier implementation of an SSVEP classification system and is **archived**. This project is no longer under active development. It served as the initial baseline that informed the development of the more advanced, PyTorch-based **[SSVEPformer project](https://github.com/Iksiboi777/SSVEPformer-GNN-Modal)**.
 
 ## Project Overview
 
